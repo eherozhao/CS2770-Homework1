@@ -6,6 +6,8 @@ from scipy.misc import imread, imsave, imresize
 from scipy.io import loadmat
 from scipy import ndimage
 import math
+import warnings
+# warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
 from scipy.ndimage import gaussian_filter
 
 """
@@ -22,8 +24,8 @@ def part1(imagesList, leung_malik):
     For each filter, generate a 2 * 4 subplots
     """
     for i in range(len(imagesList)):
-        imagesList[i] = np.dot(imagesList[i], np.array([0.299, 0.587, 0.114]))
-        imagesList[i] = cv2.resize(imagesList[i], [100, 100])
+        # imagesList[i] = np.dot(imagesList[i], np.array([0.299, 0.587, 0.114]))
+        imagesList[i] = cv2.resize(imagesList[i], (100, 100))
 
     if not os.path.exists("PartI_Subplots"):
         os.mkdir("PartI_Subplots")
@@ -61,7 +63,8 @@ Part II: Image Responses with Filters
 def compute_texture_reprs(image, filter):
     # initialize the variable response
     # image_gray = np.dot(image, np.array([0.299, 0.587, 0.114]))
-    image_gray = image
+
+    image_gray = image.astype("float64")
     img = cv2.resize(image_gray, (100, 100))
     response = np.ndarray(shape=(filter.shape[2], img.shape[0], img.shape[1]))
     # calculate the response
@@ -84,10 +87,11 @@ Part III: Hybrid Images
 
 def part3(img1, img2):
     # resize the image to 512 * 512
-    im1_resize = cv2.resize(img1, [512, 512])
-    im2_resize = cv2.resize(img2, [512, 512])
+    im1_resize = cv2.resize(img1, (512, 512))
+    im2_resize = cv2.resize(img2, (512, 512))
 
     # convert color image to GrayScale
+    im1_gray = cv2.cvtColor(im1_resize, cv2.COLOR_BGR2GRAY)
     im1_gray = cv2.cvtColor(im1_resize, cv2.COLOR_BGR2GRAY)
     im2_gray = cv2.cvtColor(im2_resize, cv2.COLOR_BGR2GRAY)
 
@@ -132,7 +136,7 @@ def extract_keypoints(img):
     Ixy = dx * dy
     M = np.zeros((2, 2))
     cornerList = []
-    offset = math.floor(window_size / 2)
+    offset = int(math.floor(window_size / 2))
     scores = []
 
     # Calculate the sum of squares
@@ -166,7 +170,7 @@ def extract_keypoints(img):
 
     # draw the circle via the number of scores
     for i in range(len(cornerList)):
-        radius = math.floor(scores[i] / 50000000)
+        radius = int(math.floor(scores[i] / 50000000))
         m = cornerList[i][0]
         n = cornerList[i][1]
         cv2.circle(img, (n, m), radius, (0, 255, 0))
@@ -233,10 +237,11 @@ def compute_features(cornerList, dx, dy, image):
                         local[7] += grad_mag[a][b]
 
             # normalize -> clip -> normalize
-            norm = [i / sum(local) for i in local]
+            norm = [l / sum(local) for l in local]
             norm = np.clip(norm, 0, 0.2)
-            norm = [i / sum(norm) for i in norm]
+            norm = [l / sum(norm) for l in norm]
             # store all the information of features into the features matrix
+            # TODO
             for j in range(len(norm)):
                 features[i][j] = norm[j]
     return features
@@ -246,7 +251,10 @@ Part VI: Image Description with SIFT Bag-of-Words
 """
 def computeBOWRepr(features, means):
     # initialize the bow variable
-    bow = [0] * means.shape[0]
+    bow = np.zeros(shape=(means.shape[0],))
+    # bow_repr = np.zeros(shape=(means.shape[0],))
+
+    # bow_repr = [0] * means.shape[0]
 
     for i in range(features.shape[0]):
         dist = [0] * means.shape[0]
@@ -254,7 +262,9 @@ def computeBOWRepr(features, means):
             dist[j] = np.linalg.norm(features[i]- means[j])
         index = np.argmin(dist)
         bow[index] += 1
-    bow_repr = [i / sum(bow) for i in bow]
+    bow_repr = [float(l / np.sum(bow)) for l in bow]
+    # for i in bow:
+
     return bow_repr
 
 # calculate the within_distance of images
@@ -314,7 +324,7 @@ def between_distance(img1, img2):
 def compare_description(imagesList):
     within = []
     for i in range(0, len(imagesList), 2):
-        # imagesList[i] = imagesList[i].astype("float64")
+        imagesList[i] = imagesList[i].astype("float64")
         img1 = cv2.resize(imagesList[i], (100, 100))
         img2 = cv2.resize(imagesList[i + 1], (100, 100))
         dist = within_distance(img1, img2)
@@ -367,6 +377,7 @@ if __name__ == '__main__':
     for i in onlyFiles:
         img = cv2.imread(os.path.join(imagesPath, i))
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        # img = np.dot(img, np.array([0.299, 0.587, 0.114]))
         imagesList.append(img)
 
     # load the filer matrix
@@ -379,10 +390,20 @@ if __name__ == '__main__':
     PartI:
     """
     # part1(imagesList, leung_malik)
-    """
-    PartII:
-    """
+    # #
+    # print("Part 1 finished")
+    # """
+    # PartII:
+    # """
     # texture_repr_concat, texture_repr_mean = compute_texture_reprs(imagesList[0], leung_malik)
+    # print("concat: ", texture_repr_concat)
+    # print("mean: ", texture_repr_mean)
+    # print("dimension of concat: ", texture_repr_concat.shape)
+    # print("dimension of concat: ", len(texture_repr_mean))
+    #
+    #
+    # print("Part 2 finished")
+
     """     
     PartIII: 
     """
@@ -391,26 +412,33 @@ if __name__ == '__main__':
     # img1 = cv2.imread(os.path.join(part3_imagesPath, 'baby_happy.jpg'))
     # img2 = cv2.imread(os.path.join(part3_imagesPath, 'baby_weird.jpg'))
     # part3(img1, img2)
-    """
-    PartIV: Feature Detection
-    """
+    #
+    # print("Part 3 finished")
+    #
+    # """
+    # PartIV: Feature Detection
+    # """
     # scores = []
     # new_image = imread('./pics/panda2.jpg', mode="L")
     # cornerList, dx, dy = extract_keypoints(new_image)
-
-    """
-    PartV:Feature Description
-    """
+    #
+    # print("Part 4 finished")
+    #
+    # # """
+    # # PartV:Feature Description
+    # # """
     # features = compute_features(cornerList, dx, dy, new_image)
-
-    """
-    PartVI: Image Description with SIFT Bag-of-Words
-    """
+    # print("features: ", features)
+    #
+    # # """
+    # # PartVI: Image Description with SIFT Bag-of-Words
+    # # """
     means = loadmat('means.mat')
     # bow_repr = computeBOWRepr(features, means['means'])
+    # print("bow_repr", bow_repr)
 
-    """
-    PartVII: Comparison of Image Descriptions
-    """
-    # read in the cardinal, leopard, and panda images, then resize them
+    # """
+    # PartVII: Comparison of Image Descriptions
+    # """
+    # # read in the cardinal, leopard, and panda images, then resize them
     compare_description(imagesList)
